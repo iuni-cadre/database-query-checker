@@ -1,6 +1,6 @@
 import psycopg2
 from psycopg2 import pool
-from flask import Flask, jsonify, render_template, json
+import json
 import os, sys
 import collections
 import logging
@@ -10,7 +10,7 @@ import metadatabase_config
 db_host = metadatabase_config.database_host
 db_port = metadatabase_config.database_port
 db_username = metadatabase_config.database_username
-db_password = metadatabase_config.database_passwordd
+db_password = metadatabase_config.database_password
 db_name = metadatabase_config.database_name
 
 logger = logging.getLogger()
@@ -48,29 +48,13 @@ def check_database_query():
         # Print PostgreSQL Connection properties
         print(connection.get_dsn_parameters(), "\n")
         # Print PostgreSQL version
-        cursor.execute("SELECT max(package.package_id) as package_id, max(package.type) as type, max(package.description) as description, max(package.name) as name, max(package.doi) as doi, max(package.created_on) as created_on, max(package.created_by) as created_by, max(tool.tool_id) as tool_id, max(tool.description) as tool_description, max(tool.name) as tool_name, max(tool.script_name) as tool_script_name, array_agg(archive.name) as input_files FROM package, archive, tool where package.archive_id = archive.archive_id AND package.tool_id = tool.tool_id GROUP BY package.package_id ORDER BY %s LIMIT %d OFFSET %d;", [order, limit, offset])
-        if cursor.rowcount == 0:
-            return jsonify({"Error:", "Query returns zero results."}), 404
+        cursor.execute("SELECT max(package.package_id) as package_id, max(package.type) as type, max(package.description) as description, max(package.name) as name, max(package.doi) as doi, max(package.created_on) as created_on, max(package.created_by) as created_by, max(tool.tool_id) as tool_id, max(tool.description) as tool_description, max(tool.name) as tool_name, max(tool.script_name) as tool_script_name, array_agg(archive.name) as input_files FROM package, archive, tool where package.archive_id = archive.archive_id AND package.tool_id = tool.tool_id GROUP BY package.package_id ORDER BY {} LIMIT {} OFFSET {};".format(order, limit, offset))
         if cursor.rowcount > 0:
-            package_info = cursor.fetchone()
-            package_json = {
-                'package_id': package_info[0],
-                'type': package_info[1],
-                'description': package_info[2],
-                'name': package_info[3],
-                'doi': package_info[4],
-                'created_on': package_info[5],
-                'created_by': package_info[6],
-                'tools': [
-                    {'tool_id': package_info[7], 'tool_description': package_info[8], 'tool_name': package_info[9],
-                     'tool_script_name': package_info[10]}],
-                'input_files': package_info[11]
-            }
-            package_response = json.dumps(package_json)
-            return jsonify(json.loads(package_response), 200)
+            for query in cursor:
+                print(str(query))
     except Exception:
-        return jsonify({"Error:",
-                        "Problem querying the package table or the archive table or the tools table in the meta database."}), 500
+        return ({"Error:", "Problem querying the package table or the archive table or the tools table in the meta database."}), 500
+
     finally:
         # Closing database connection.
         cursor.close()
