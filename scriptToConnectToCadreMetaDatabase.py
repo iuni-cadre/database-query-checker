@@ -61,33 +61,22 @@ def check_database_query():
         # Print PostgreSQL Connection properties
         print(connection.get_dsn_parameters(), "\n")
 
-        query = """SELECT
-                    archive_id,
-                    s3_location,
-                    description as archive_description,
-                    name as archive_name,
-                    created_on as archive_created_on
-                FROM archive
-                ORDER BY {order_by}
-                LIMIT %s
-                OFFSET %s;""".format(order_by=actual_order_by)
+        directory_path = ''
+        file_info = []
+        for root, dirs, files in os.walk(directory_path):
+            for file_name in files:
+                print(os.path.join(root, file_name))
+                file_info.append({'path': '{}'.format(os.path.join(root, file_name)), 'type': 'file'})
+                for directory_name in dirs:
+                    print(os.path.join(root, directory_name))
+                    file_info.append({'path': '{}'.format(os.path.join(root, directory_name)), 'type': 'folder'})
 
-        cursor.execute(query, (limit, offset))
-        if cursor.rowcount > 0:
-            archive_info = cursor.fetchall()
-            archive_list = []
-            for archives in archive_info:
-                archive_json = {
-                    'archive_id': archives[0],
-                    's3_location': archives[1],
-                    'archive_description': archives[2],
-                    'archive_name': archives[3],
-                    'archive_created_on': archives[4].isoformat()
-                }
-                archive_list.append(archive_json)
-            print(archive_list)
-            archive_response = json.dumps(archive_list)
-            print(archive_response)
+            # Here we are printing the value of the list
+            for x in range(len(file_info)):
+                print(file_info[x])
+
+            files_response = json.dumps(file_info)
+            print(files_response)
 
     except Exception:
         return ({"Error:", "Problem querying the package table or the archive table or the tools table in the meta database."}), 500
