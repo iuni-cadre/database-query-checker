@@ -37,13 +37,22 @@ def check_database_query():
     """
     limit = 25
     page = 0
-    order = 'name'
-
-    offset = page * limit
+    order = 'name'   
 
     package_id = '234221136'
 
     tool_id = '11234221128'
+
+    # This prevents sql injection for the order by clause. Never use data sent by the user directly in a query
+    actual_order_by = 'name'
+    if order == 'name':
+        actual_order_by = 'name'
+    if order == 'description':
+        actual_order_by = 'description'
+    if order == 'created_on':
+        actual_order_by = 'created_on'
+
+    offset = page * limit     
 
     try:
         # Use getconn() method to get Connection from connection pool
@@ -51,24 +60,34 @@ def check_database_query():
         cursor = connection.cursor()
         # Print PostgreSQL Connection properties
         print(connection.get_dsn_parameters(), "\n")
-        # Print PostgreSQL version
-        cursor.execute("SELECT tool_id, tool.description as tool_description, tool.name as tool_name, tool.script_name as tool_script_name, trim(both '\"' from to_json(tool.created_on)::text) as tool_created_on FROM tool WHERE tool_id = '{}';".format(tool_id))
-        if cursor.rowcount > 0:
-            tool_info = cursor.fetchall()
-            tool_list = []
-            for tools in tool_info:
-                tool_json = {
-                    'tool_id': tools[0],
-                    'tool_description': tools[1],
-                    'tool_name': tools[2],
-                    'tool_script_name': tools[3],
-                    'created_on': tools[4]
-                }
-                tool_list.append(tool_json)
-            print(tool_list)
-            tool_response = json.dumps(tool_list)
-            print(tool_response)
 
+        query = """SELECT
+                    archive_id,
+                    s3_location,
+                    description as archive_description,
+                    name as archive_name,
+                    created_on as archive_created_on
+                FROM archive
+                ORDER BY {order_by}
+                LIMIT %s
+                OFFSET %s;""".format(order_by=actual_order_by)
+
+        cursor.execute(query, (limit, offset))
+        if cursor.rowcount > 0:
+            archive_info = cursor.fetchall()
+            archive_list = []
+            for archives in archive_info:
+                archive_json = {
+                    'archive_id': archives[0],
+                    's3_location': archives[1],
+                    'archive_description': archives[2],
+                    'archive_name': archives[3],
+                    'archive_created_on': archives[4].isoformat()
+                }
+                archive_list.append(archive_json)
+            print(archive_list)
+            archive_response = json.dumps(archive_list)
+            print(archive_response)
 
     except Exception:
         return ({"Error:", "Problem querying the package table or the archive table or the tools table in the meta database."}), 500
