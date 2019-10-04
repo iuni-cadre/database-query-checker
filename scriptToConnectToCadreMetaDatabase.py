@@ -37,7 +37,8 @@ def check_database_query():
     """
     limit = 25
     page = 0
-    order = 'name'   
+    order = 'name' 
+    level = 2
 
     package_id = '234221136'
 
@@ -61,22 +62,28 @@ def check_database_query():
         # Print PostgreSQL Connection properties
         print(connection.get_dsn_parameters(), "\n")
 
-        directory_path = ''
+        path = '/packages'
+
+        directory_path = '/home/ubuntu/efs-mount-point/home/cadre-query-results/m52xa5dbmfsgs' + path
+        
         file_info = []
         for root, dirs, files in os.walk(directory_path):
-            for file_name in files:
-                print(os.path.join(root, file_name))
-                file_info.append({'path': '{}'.format(os.path.join(root, file_name)), 'type': 'file'})
+            _root = root.replace(directory_path, '')
+            if _root.count(os.sep) < level:
+                for file_name in files:
+                    print(os.path.join(root, file_name))
+                    file_info.append({'path': '{}'.format(os.path.join(root, file_name)), 'type': 'file'})
                 for directory_name in dirs:
                     print(os.path.join(root, directory_name))
                     file_info.append({'path': '{}'.format(os.path.join(root, directory_name)), 'type': 'folder'})
 
-            # Here we are printing the value of the list
-            for x in range(len(file_info)):
-                print(file_info[x])
 
-            files_response = json.dumps(file_info)
-            print(files_response)
+        # Here we are printing the value of the list
+        for x in range(len(file_info)):
+            print(file_info[x])
+
+        files_response = json.dumps(file_info)
+        print(files_response)
 
     except Exception:
         return ({"Error:", "Problem querying the package table or the archive table or the tools table in the meta database."}), 500
