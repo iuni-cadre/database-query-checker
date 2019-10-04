@@ -62,28 +62,33 @@ def check_database_query():
         # Print PostgreSQL Connection properties
         print(connection.get_dsn_parameters(), "\n")
 
-        path = '/packages'
+        query = """SELECT 
+                    tool_id, 
+                    tool.description as tool_description, 
+                    tool.name as tool_name, 
+                    tool.script_name as tool_script_name, 
+                    tool.created_on as tool_created_on
+                FROM tool 
+                ORDER BY {order_by} 
+                LIMIT %s 
+                OFFSET %s;""".format(order_by=actual_order_by)
 
-        directory_path = '/home/ubuntu/efs-mount-point/home/cadre-query-results/m52xa5dbmfsgs' + path
-        
-        file_info = []
-        for root, dirs, files in os.walk(directory_path):
-            _root = root.replace(directory_path, '')
-            if _root.count(os.sep) < level:
-                for file_name in files:
-                    print(os.path.join(root, file_name))
-                    file_info.append({'path': '{}'.format(os.path.join(root, file_name)), 'type': 'file'})
-                for directory_name in dirs:
-                    print(os.path.join(root, directory_name))
-                    file_info.append({'path': '{}'.format(os.path.join(root, directory_name)), 'type': 'folder'})
-
-
-        # Here we are printing the value of the list
-        for x in range(len(file_info)):
-            print(file_info[x])
-
-        files_response = json.dumps(file_info)
-        print(files_response)
+        cursor.execute(query, (limit, offset))
+        if cursor.rowcount > 0:
+            tool_info = cursor.fetchall()
+            tool_list = []
+            for tools in tool_info:
+                tool_json = {
+                    'tool_id': tools[0],
+                    'tool_description': tools[1],
+                    'tool_name': tools[2],
+                    'tool_script_name': tools[3],
+                    'created_on': tools[4].isoformat()
+                }
+                tool_list.append(tool_json)
+            print(tool_list)
+            tool_response = json.dumps(tool_list)
+            print(tool_response)
 
     except Exception:
         return ({"Error:", "Problem querying the package table or the archive table or the tools table in the meta database."}), 500
