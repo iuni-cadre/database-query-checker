@@ -5,6 +5,7 @@ import os, sys
 import collections
 import logging
 import metadatabase_config
+from datetime import date
 
 # cadre metadatabase settings
 db_host = metadatabase_config.database_host
@@ -29,6 +30,13 @@ except:
     sys.exit()
 
 logger.info("SUCCESS: Connection to RDS Postgres instance succeeded")
+
+
+class DateEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, date):
+            return str(obj)
+        return json.JSONEncoder.default(self, obj)
 
 
 def check_database_query():
@@ -63,32 +71,54 @@ def check_database_query():
         print(connection.get_dsn_parameters(), "\n")
 
         query = """SELECT 
-                    tool_id, 
-                    tool.description as tool_description, 
-                    tool.name as tool_name, 
-                    tool.script_name as tool_script_name, 
-                    tool.created_on as tool_created_on
-                FROM tool 
+                    max(package.package_id) as package_id, 
+                    max(package.type) as type, 
+                    max(package.description) as description, 
+                    max(package.name) as name, 
+                    max(package.doi) as doi, 
+                    max(package.created_on) as created_on, 
+                    max(package.created_by) as created_by, 
+                    max(tool.tool_id) as tool_id, 
+                    max(tool.description) as tool_description, 
+                    max(tool.name) as tool_name, 
+                    max(tool.script_name) as tool_script_name, 
+                    array_agg(archive.name) as input_files 
+                FROM package 
+                    JOIN archive ON (package.archive_id = archive.archive_id)
+                    JOIN tool ON (package.tool_id = tool.tool_id)
+                GROUP BY 
+                        package.package_id 
                 ORDER BY {order_by} 
                 LIMIT %s 
                 OFFSET %s;""".format(order_by=actual_order_by)
 
         cursor.execute(query, (limit, offset))
-        if cursor.rowcount > 0:
-            tool_info = cursor.fetchall()
-            tool_list = []
-            for tools in tool_info:
-                tool_json = {
-                    'tool_id': tools[0],
-                    'tool_description': tools[1],
-                    'tool_name': tools[2],
-                    'tool_script_name': tools[3],
-                    'created_on': tools[4].isoformat()
+        if cursor.rowcount == 0:
+            return jsonify({"Error": "Query returns zero results."}), 404
+        elif cursor.rowcount > 0:
+            package_info = cursor.fetchall()
+            package_list = []
+            for packages in package_info:
+                package_json = {
+                    'package_id': packages[0],
+                    'type': packages[1],
+                    'description': packages[2],
+                    'name': packages[3],
+                    'doi': packages[4],
+                    'created_on': packages[5],
+                    'created_by': packages[6],
+                    'tools': [{
+                        'tool_id': packages[7], 
+                        'description': packages[8], 
+                        'name': packages[9], 
+                        'created_by': None
+                        # 'tool_script_name': packages[10]
+                    }],
+                    'input_files': packages[11]
                 }
-                tool_list.append(tool_json)
-            print(tool_list)
-            tool_response = json.dumps(tool_list)
-            print(tool_response)
+                package_list.append(package_json)
+            package_response = json.dumps(package_list, cls=DateEncoder)
+            print(package_response)
 
     except Exception:
         return ({"Error:", "Problem querying the package table or the archive table or the tools table in the meta database."}), 500
