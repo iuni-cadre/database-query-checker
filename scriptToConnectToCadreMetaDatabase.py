@@ -70,31 +70,51 @@ def check_database_query():
         # Print PostgreSQL Connection properties
         print(connection.get_dsn_parameters(), "\n")
   
-        query = "SELECT " \
-                "tool_id, " \
-                "description as tool_description, " \
-                "name as tool_name, " \
-                "script_name as tool_script_name, " \
-                "created_on as tool_created_on " \
-                "FROM tool " \
-                "WHERE tool_id=%s "
 
-        cursor.execute(query, (tool_id,))
-        
+        query = "SELECT " \
+                "max(package.package_id) as package_id, " \
+                "max(package.type) as type, " \
+                "max(package.description) as description, " \
+                "max(package.name) as name, " \
+                "max(package.doi) as doi, " \
+                "max(package.created_on) as created_on, " \
+                "max(package.created_by) as created_by, " \
+                "max(tool.tool_id) as tool_id, " \
+                "max(tool.description) as tool_description, " \
+                "max(tool.name) as tool_name, " \
+                "max(tool.script_name) as tool_script_name, " \
+                "array_agg(archive.name) as input_files " \
+                "FROM package " \
+                "JOIN archive ON (package.archive_id = archive.archive_id) " \
+                "JOIN tool ON (package.tool_id = tool.tool_id) " \
+                "WHERE package.package_id = %s "
+
+        cursor.execute(query, (package_id,))
+
         if cursor.rowcount > 0:
-            tool_info = cursor.fetchall()
-            tool_list = []
-            for tools in tool_info:
-                tool_json = {
-                    'tool_id': tools[0],
-                    'tool_description': tools[1],
-                    'tool_name': tools[2],
-                    'tool_script_name': tools[3],
-                    'created_on': tools[4]
+            package_info = cursor.fetchall()
+            package_list = []
+            for packages in package_info:
+                package_json = {
+                    'package_id': packages[0],
+                    'type': packages[1],
+                    'description': packages[2],
+                    'name': packages[3],
+                    'doi': packages[4],
+                    'created_on': packages[5],
+                    'created_by': packages[6],
+                    'tools': [{
+                        'tool_id': packages[7],
+                        'description': packages[8],
+                        'name': packages[9],
+                        'created_by': 'None',
+                        'tool_script_name': packages[10]
+                    }],
+                    'input_files': packages[11]
                 }
-                tool_list.append(tool_json)
-            tool_response = json.dumps(tool_list, cls=DateEncoder)
-            print(tool_response)
+                package_list.append(package_json)
+            package_response = json.dumps(package_list, cls=DateEncoder)
+            print(package_response)
 
     except Exception:
         return ({"Error:", "Problem querying the package table or the archive table or the tools table in the meta database."}), 500
