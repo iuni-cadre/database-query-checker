@@ -70,16 +70,16 @@ def check_database_query():
         # Print PostgreSQL Connection properties
         print(connection.get_dsn_parameters(), "\n")
   
-        query = ("""SELECT 
-                    tool_id, 
-                    tool.description as tool_description, 
-                    tool.name as tool_name, 
-                    tool.script_name as tool_script_name, 
-                    tool.created_on as tool_created_on
-                FROM tool 
-                WHERE tool_id = '%s';""" % (tool_id))
+        query = "SELECT " \
+                "tool_id, " \
+                "description as tool_description, " \
+                "name as tool_name, " \
+                "script_name as tool_script_name, " \
+                "created_on as tool_created_on " \
+                "FROM tool " \
+                "WHERE tool_id=%s "
 
-        cursor.execute(query)
+        cursor.execute(query, (tool_id,))
         
         if cursor.rowcount > 0:
             tool_info = cursor.fetchall()
