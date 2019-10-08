@@ -72,58 +72,32 @@ def check_database_query():
   
 
         query = "SELECT " \
-                "max(package.package_id) as package_id, " \
-                "max(package.type) as type, " \
-                "max(package.description) as description, " \
-                "max(package.name) as name, " \
-                "max(package.doi) as doi, " \
-                "max(package.created_on) as created_on, " \
-                "max(package.created_by) as created_by, " \
-                "max(tool.tool_id) as tool_id, " \
-                "max(tool.description) as tool_description, " \
-                "max(tool.name) as tool_name, " \
-                "max(tool.script_name) as tool_script_name, " \
-                "array_agg(archive.name) as input_files " \
-                "FROM package " \
-                "JOIN archive ON (package.archive_id = archive.archive_id) " \
-                "JOIN tool ON (package.tool_id = tool.tool_id) " \
-                "GROUP BY package.package_id " \
+                "archive_id, " \
+                "s3_location, " \
+                "description as archive_description, " \
+                "name as archive_name, " \
+                "created_on as archive_created_on " \
+                "FROM archive " \
                 "ORDER BY {} " \
                 "LIMIT %s " \
                 "OFFSET %s ".format(actual_order_by)
 
-        print(query)
-        print(actual_order_by)
-        print(limit)
-        print(offset)
-
         cursor.execute(query, (limit, offset))
 
         if cursor.rowcount > 0:
-            print('hello')
-            package_info = cursor.fetchall()
-            package_list = []
-            for packages in package_info:
-                package_json = {
-                    'package_id': packages[0],
-                    'type': packages[1],
-                    'description': packages[2],
-                    'name': packages[3],
-                    'doi': packages[4],
-                    'created_on': packages[5],
-                    'created_by': packages[6],
-                    'tools': [{
-                        'tool_id': packages[7],
-                        'description': packages[8],
-                        'name': packages[9],
-                        'created_by': 'None',
-                        'tool_script_name': packages[10]
-                    }],
-                    'input_files': packages[11]
+            archive_info = cursor.fetchall()
+            archive_list = []
+            for archives in archive_info:
+                archive_json = {
+                    'archive_id': archives[0],
+                    's3_location': archives[1],
+                    'archive_description': archives[2],
+                    'archive_name': archives[3],
+                    'archive_created_on': archives[4]
                 }
-                package_list.append(package_json)
-            package_response = json.dumps(package_list, cls=DateEncoder)
-            print(package_response)
+                archive_list.append(archive_json)
+            archive_response = json.dumps(archive_list, cls=DateEncoder)
+            print(archive_response)
 
     except Exception:
         return ({"Error:", "Problem querying the package table or the archive table or the tools table in the meta database."}), 500
