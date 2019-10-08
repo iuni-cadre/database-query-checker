@@ -87,11 +87,20 @@ def check_database_query():
                 "FROM package " \
                 "JOIN archive ON (package.archive_id = archive.archive_id) " \
                 "JOIN tool ON (package.tool_id = tool.tool_id) " \
-                "WHERE package.package_id = %s "
+                "GROUP BY package.package_id " \
+                "ORDER BY {} " \
+                "LIMIT %s " \
+                "OFFSET %s ".format(actual_order_by)
 
-        cursor.execute(query, (package_id,))
+        print(query)
+        print(actual_order_by)
+        print(limit)
+        print(offset)
+
+        cursor.execute(query, (limit, offset))
 
         if cursor.rowcount > 0:
+            print('hello')
             package_info = cursor.fetchall()
             package_list = []
             for packages in package_info:
