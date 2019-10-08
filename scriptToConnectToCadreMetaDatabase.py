@@ -71,33 +71,31 @@ def check_database_query():
         print(connection.get_dsn_parameters(), "\n")
 
         query = """SELECT 
-                    archive_id,  
-                    s3_location, 
-                    description as archive_description, 
-                    name as archive_name, 
-                    created_on as archive_created_on
-                FROM archive
+                    tool_id, 
+                    tool.description as tool_description, 
+                    tool.name as tool_name, 
+                    tool.script_name as tool_script_name, 
+                    tool.created_on as tool_created_on
+                FROM tool 
                 ORDER BY {order_by} 
                 LIMIT %s 
                 OFFSET %s;""".format(order_by=actual_order_by)
 
         cursor.execute(query, (limit, offset))
-        if cursor.rowcount == 0:
-            return jsonify({"Error:", "Query returns zero results."}), 404
         if cursor.rowcount > 0:
-            archive_info = cursor.fetchall()
-            archive_list = []
-            for archives in archive_info:
-                archive_json = {
-                    'archive_id': archives[0],
-                    's3_location': archives[1],
-                    'archive_description': archives[2],
-                    'archive_name': archives[3],
-                    'archive_created_on': archives[4]
+            tool_info = cursor.fetchall()
+            tool_list = []
+            for tools in tool_info:
+                tool_json = {
+                    'tool_id': tools[0],
+                    'tool_description': tools[1],
+                    'tool_name': tools[2],
+                    'tool_script_name': tools[3],
+                    'created_on': tools[4]
                 }
-                archive_list.append(archive_json)
-            archive_response = json.dumps(archive_list, cls=DateEncoder)
-            print(archive_response)
+                tool_list.append(tool_json)
+            tool_response = json.dumps(tool_list, cls=DateEncoder)
+            print(tool_response)
 
     except Exception:
         return ({"Error:", "Problem querying the package table or the archive table or the tools table in the meta database."}), 500
